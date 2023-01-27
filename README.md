@@ -83,17 +83,17 @@ fn(name str) -> (success bool, index int)
 Possible fn syntax options:
 ```
 no-return: (val str) -> void
-/fn
 
 one-return: fn(first str, second int) -> int
-/fn
 
 multi: fn(first str, second int) -> (res1 str, res2 int)
-/fn
 multi: (first str, second int) -> (res1 str, res2 int)
-/fn
 multi: first str, second int -> res1 str, res2 int
-/fn
+multi: (first: str, second: int): (res1: str, res2: int) = body
+multi: (first str, second int) (res1 str, res2 int) = body
+
+add: (x: int, y: int): int = x + y
+add: (x int, y int) int = x + y
 
 # inline
 fn(x int, y int) => return x * y /fn
