@@ -4,6 +4,36 @@ Experimental lazy, functional, data flow programming language.
 
 Implemented in [Zig](https://ziglang.org/), last compiled with 0.11.0-dev.1269+c2d37224c.
 
+## v0
+
+Simplest overall version focused on validating core ideas without worrying about actual syntax.
+
+* S-expressions
+* Lazy
+* Algebraic type system
+* Multiple inputs and outputs
+* Multiple returns
+* Partial evaluation
+* Order-independent evaluation
+* Everything is an expression
+* Some sort of explicit ordering of impure functions
+
+```
+; a comment
+; tokens are split on whitespace and may contain any character except '(' ')' ';'
+
+; function call
+(fn-name arg0 arg1 ...)
+
+; 'let' binds a name to a value
+(let name value)
+
+; 'fn' defines a function, which can have any number of named and typed inputs and outputs
+(fn (list of inputs) (list of outputs) (list of expressions))
+```
+
+## Notes
+
 * Data flow programming, defining data transformation steps instead of specific programming instructions.
 * Everything's immutable except for specific input/output blocks with some sort of synchronization method.
   * Possibly some sort of step/phase indicator, where any impure commands have to wait for all impure commands from the previous step to finish. This is not necessary if steps are directly dependent on each other, only if indirectly (eg, IO on a variable)
