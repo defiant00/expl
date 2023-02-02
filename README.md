@@ -100,3 +100,23 @@ fn(x int, y int) => return x * y /fn
 (x int, y int) => x * y
 x int, y int => x * y
 ```
+
+```
+fn range Inf -> [Int]
+    return rangeHelper 0
+fn range end:Int -> [Int]
+    return rangeHelper 0 end
+fn range start:Int Inf -> [Int]
+    return rangeHelper start
+fn range start:Int end:Int -> [Int]
+    return rangeHelper start end
+
+fn rangeHelper cur:Int end:Int -> [Int]
+    if cur < end
+        return cur
+        return rangeHelper cur + 1
+
+fn rangeHelper cur:Int -> [Int]
+    return cur
+    return rangeHelper cur + 1
+```
