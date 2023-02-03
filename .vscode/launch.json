@@ -2,7 +2,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "PowerShell: Launch Script",
+            "name": "Build and Run",
             "type": "PowerShell",
             "request": "launch",
             "script": "zig build run -- run examples/v0/test.expl",
