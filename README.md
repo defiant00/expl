@@ -17,6 +17,7 @@ Simplest overall version focused on validating core ideas without worrying about
 * Order-independent evaluation
 * Everything is an expression
 * Some sort of explicit ordering of impure functions
+* Not OO, but explore code reuse options
 
 ```
 ; a comment
@@ -40,10 +41,18 @@ Simplest overall version focused on validating core ideas without worrying about
     * `sync` block that takes a value (eg, the result of a variable store, so it must be complete) and the code to then run? may complicate later editing since if new updates are added in the middle then any syncs would also have to be updated
     * simple `step` or `sync` command that guarantees all prior impure functions are done - can be graphical bars like a kanban board separating the sections when edited visually
 * All lazily evaluated.
+* Types
+  * Arbitrarily-sized ints that gracefully degrade to a big int.
+  * Real numbers that are stored as a numerator and denominator int.
+  * Floats for performance in places that reals don't work.
+  * Lists
+  * Strings - maybe just a list of characters?
+  * Maps
+  * Sets
 * Blocks can have any number of strongly typed inputs and outputs.
 * Equally usable as text or graphical node setup.
   * Comment or special syntax to store visual node metadata as text, so existing text tools are fully supported.
-* Basic syntax is `label` `:` `data`
+* Basic syntax is `label` `:` `expression`
 * Split (only?) on whitespace, so identifiers can be `first-name` or `best!`. Will have to thoroughly investigate how this interacts with other symbols.
 
 ```
