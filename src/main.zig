@@ -1,6 +1,5 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-
 const out = @import("out.zig");
 const version = @import("version.zig").version;
 const Vm = @import("vm.zig").Vm;
