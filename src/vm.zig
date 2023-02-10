@@ -36,7 +36,12 @@ pub const Vm = struct {
                     out.print("  ", .{});
                 }
             }
-            out.println("{s}", .{tok.value});
+            switch (tok.type) {
+                .left_paren, .right_paren => out.printlnColor("{s}", .{tok.value}, .yellow),
+                .number => out.printlnColor("{s}", .{tok.value}, .blue),
+                .string => out.printlnColor("\"{s}\"", .{tok.value}, .orange),
+                else => out.println("{s}", .{tok.value}),
+            }
 
             if (tok.type == .left_paren) indent += 1;
         }
