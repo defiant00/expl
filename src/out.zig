@@ -1,8 +1,8 @@
 const std = @import("std");
 
 var stdout_file: std.fs.File.Writer = undefined;
-var buffered_writer: std.io.BufferedWriter(4096, std.fs.File.Writer) = undefined;
-var stdout: std.io.BufferedWriter(4096, std.fs.File.Writer).Writer = undefined;
+var buffered_writer: @TypeOf(std.io.bufferedWriter(stdout_file)) = undefined;
+pub var stdout: @TypeOf(buffered_writer).Writer = undefined;
 
 pub var no_style = false;
 

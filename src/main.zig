@@ -1,14 +1,17 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const out = @import("out.zig");
-const version = @import("version.zig").version;
 const Vm = @import("vm.zig").Vm;
+
+const version = std.SemanticVersion{ .major = 0, .minor = 1, .patch = 0, .pre = "dev.0.2" };
 
 pub fn main() !void {
     out.init();
     defer out.flush();
 
-    out.println("expl {d}.{d}.{d}", .{ version.major, version.minor, version.patch });
+    out.print("expl ", .{});
+    try version.format("", .{}, out.stdout);
+    out.println("", .{});
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     var allocator = gpa.allocator();
