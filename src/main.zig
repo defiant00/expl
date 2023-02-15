@@ -9,10 +9,6 @@ pub fn main() !void {
     out.init();
     defer out.flush();
 
-    out.print("expl ", .{});
-    try version.format("", .{}, out.stdout);
-    out.println("", .{});
-
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     var allocator = gpa.allocator();
 
@@ -25,7 +21,11 @@ pub fn main() !void {
     while (args.next()) |arg| try arg_list.append(arg);
 
     var valid = false;
-    if (arg_list.items.len >= 3 and std.mem.eql(u8, arg_list.items[1], "run")) {
+    if (arg_list.items.len >= 2 and std.mem.eql(u8, arg_list.items[1], "help")) {
+        valid = true;
+        parseFlags(arg_list.items[2..]);
+        printUsage();
+    } else if (arg_list.items.len >= 3 and std.mem.eql(u8, arg_list.items[1], "run")) {
         valid = true;
         parseFlags(arg_list.items[3..]);
 
@@ -34,19 +34,39 @@ pub fn main() !void {
         defer vm.deinit();
 
         try runFile(allocator, &vm, arg_list.items[2]);
+    } else if (arg_list.items.len >= 2 and std.mem.eql(u8, arg_list.items[1], "version")) {
+        valid = true;
+        parseFlags(arg_list.items[2..]);
+        try version.format("", .{}, out.stdout);
+        out.println("", .{});
     }
 
     if (!valid) {
-        out.printExit("Usage: expl [command] [flags]\n  Commands:\n    run [file]\n  Flags:\n    -no-style", .{}, 64);
+        printUsage();
+        out.printExit("", .{}, 64);
     }
 }
 
 fn parseFlags(flags: []const []const u8) void {
     for (flags) |flag| {
-        if (std.mem.eql(u8, flag, "-no-style")) {
+        if (std.mem.eql(u8, flag, "--no-style")) {
             out.no_style = true;
         }
     }
+}
+
+fn printUsage() void {
+    out.println(
+        \\Usage: expl <command> [flags]
+        \\
+        \\Commands:
+        \\  help            Print this help and exit
+        \\  run <file>      Run specified file
+        \\  version         Print version and exit
+        \\
+        \\Flags:
+        \\  --no-style      Output as plain text
+    , .{});
 }
 
 fn runFile(allocator: Allocator, vm: *Vm, path: []const u8) !void {
