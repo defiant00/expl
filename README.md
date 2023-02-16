@@ -4,7 +4,7 @@ Experimental lazy, functional, data flow programming language.
 
 Implemented in [Zig](https://ziglang.org/), last compiled with 0.11.0-dev.1580+a5b34a61a.
 
-## v0
+## Layer 0
 
 Simplest overall version focused on validating core ideas without worrying about actual syntax.
 
