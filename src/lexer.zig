@@ -41,10 +41,7 @@ pub const Lexer = struct {
 
     fn peek(self: *Lexer, offset: usize) u8 {
         const index = self.current + offset;
-        if (index < self.source.len) {
-            return self.source[index];
-        }
-        return 0;
+        return if (index < self.source.len) self.source[index] else 0;
     }
 
     fn resetLength(self: *Lexer) void {
@@ -67,10 +64,6 @@ pub const Lexer = struct {
         };
     }
 
-    fn identToken(self: *Lexer) Token {
-        return self.token(identTokenType(self.source[self.start..self.current]));
-    }
-
     fn isDecimal(c: u8) bool {
         return switch (c) {
             '0'...'9', '_' => true,
@@ -78,26 +71,44 @@ pub const Lexer = struct {
         };
     }
 
-    fn identTokenType(ident: []const u8) TokenType {
-        // check if the identifier is a number
-        var i: usize = 0;
-        while (i < ident.len and isDecimal(ident[i])) i += 1;
-        if (i + 1 < ident.len and ident[i] == '.' and isDecimal(ident[i + 1])) {
-            i += 2;
-            while (i < ident.len and isDecimal(ident[i])) i += 1;
-        }
-
-        return if (i == ident.len) .number else .identifier;
+    fn isDigit(c: u8) bool {
+        return switch (c) {
+            '0'...'9' => true,
+            else => false,
+        };
     }
 
-    fn identifier(self: *Lexer) Token {
-        while (!self.isAtEnd()) {
-            switch (self.peek(0)) {
-                ' ', '\t', '\r', '\n', '(', ')', ';' => break,
-                else => self.advance(1),
+    fn isIdentifier(c: u8) bool {
+        return switch (c) {
+            ' ', '\t', '\r', '\n', '(', ')', ';', 0 => false,
+            else => true,
+        };
+    }
+
+    fn identifier(self: *Lexer, first: u8) Token {
+        var number = isDigit(first);
+
+        // accept numbers
+        if (number) {
+            while (isDecimal(self.peek(0))) self.advance(1);
+
+            if (self.peek(0) == '.' and isDecimal(self.peek(1))) {
+                // accept the . and digit
+                self.advance(2);
+
+                while (isDecimal(self.peek(0))) self.advance(1);
             }
         }
-        return self.identToken();
+
+        // if any other characters are encountered then it's an identifier
+        if (isIdentifier(self.peek(0))) {
+            number = false;
+            self.advance(1);
+
+            while (isIdentifier(self.peek(0))) self.advance(1);
+        }
+
+        return self.token(if (number) .number else .identifier);
     }
 
     fn string(self: *Lexer) Token {
@@ -136,7 +147,7 @@ pub const Lexer = struct {
                     self.resetLength();
                 },
                 '"' => return self.string(),
-                else => return self.identifier(),
+                else => return self.identifier(c),
             }
         }
 
