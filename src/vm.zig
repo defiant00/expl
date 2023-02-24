@@ -1,7 +1,13 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
+
 const Lexer = @import("lexer.zig").Lexer;
+const GcAllocator = @import("memory.zig").GcAllocater;
 const out = @import("out.zig");
+
+test {
+    std.testing.refAllDecls(@This());
+}
 
 pub const InterpretResult = enum {
     ok,
@@ -11,13 +17,100 @@ pub const InterpretResult = enum {
 
 pub const Vm = struct {
     parent_allocator: Allocator,
+    gc: GcAllocator,
+    allocator: Allocator,
+
+    strings: std.StringHashMap(void),
 
     pub fn init(self: *Vm, allocator: Allocator) void {
         self.parent_allocator = allocator;
+        self.gc = GcAllocator.init(self);
+        self.allocator = self.gc.allocator();
+
+        self.strings = std.StringHashMap(void).init(self.allocator);
     }
 
     pub fn deinit(self: *Vm) void {
+        var key_iter = self.strings.keyIterator();
+        while (key_iter.next()) |key| self.allocator.free(key.*);
+        self.strings.deinit();
+    }
+
+    pub fn collectGarbage(self: *Vm) void {
         _ = self;
+    }
+
+    pub fn copyString(self: *Vm, chars: []const u8) []const u8 {
+        const interned = self.strings.getKey(chars);
+        if (interned) |i| return i;
+
+        const heap_chars = self.allocator.alloc(u8, chars.len) catch {
+            out.printExit("Could not allocate memory for string.", .{}, 1);
+        };
+        std.mem.copy(u8, heap_chars, chars);
+        self.strings.put(heap_chars, {}) catch {
+            out.printExit("Could not allocate memory for string.", .{}, 1);
+        };
+        return heap_chars;
+    }
+
+    test "copy string" {
+        var vm: Vm = undefined;
+        vm.init(std.testing.allocator);
+        defer vm.deinit();
+
+        const s1 = vm.copyString("first");
+        _ = vm.copyString("second");
+        _ = vm.copyString("third");
+        const s1_2 = vm.copyString("first");
+
+        try std.testing.expect(vm.strings.count() == 3);
+        try std.testing.expect(vm.strings.contains("first"));
+        try std.testing.expect(vm.strings.contains("second"));
+        try std.testing.expect(vm.strings.contains("third"));
+        try std.testing.expect(!vm.strings.contains("fourth"));
+        try std.testing.expectEqual(s1, s1_2);
+    }
+
+    pub fn takeString(self: *Vm, chars: []const u8) []const u8 {
+        const interned = self.strings.getKey(chars);
+        if (interned) |i| {
+            self.allocator.free(chars);
+            return i;
+        }
+        self.strings.put(chars, {}) catch {
+            out.printExit("Could not allocate memory for string.", .{}, 1);
+        };
+        return chars;
+    }
+
+    test "take string" {
+        var vm: Vm = undefined;
+        vm.init(std.testing.allocator);
+        defer vm.deinit();
+
+        const heap_chars_1 = try vm.allocator.alloc(u8, 5);
+        std.mem.copy(u8, heap_chars_1, "first");
+        const s1 = vm.takeString(heap_chars_1);
+
+        const heap_chars_2 = try vm.allocator.alloc(u8, 6);
+        std.mem.copy(u8, heap_chars_2, "second");
+        _ = vm.takeString(heap_chars_2);
+
+        const heap_chars_3 = try vm.allocator.alloc(u8, 5);
+        std.mem.copy(u8, heap_chars_3, "third");
+        _ = vm.takeString(heap_chars_3);
+
+        const heap_chars_1_2 = try vm.allocator.alloc(u8, 5);
+        std.mem.copy(u8, heap_chars_1_2, "first");
+        const s1_2 = vm.takeString(heap_chars_1_2);
+
+        try std.testing.expect(vm.strings.count() == 3);
+        try std.testing.expect(vm.strings.contains("first"));
+        try std.testing.expect(vm.strings.contains("second"));
+        try std.testing.expect(vm.strings.contains("third"));
+        try std.testing.expect(!vm.strings.contains("fourth"));
+        try std.testing.expectEqual(s1, s1_2);
     }
 
     pub fn interpret(self: *Vm, source: []const u8) InterpretResult {
