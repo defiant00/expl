@@ -3,7 +3,7 @@ const Allocator = std.mem.Allocator;
 const out = @import("out.zig");
 const Vm = @import("vm.zig").Vm;
 
-const version = std.SemanticVersion{ .major = 0, .minor = 1, .patch = 0, .pre = "dev.0.4" };
+const version = std.SemanticVersion{ .major = 0, .minor = 1, .patch = 0, .pre = "dev.0.5" };
 
 pub fn main() !void {
     out.init();

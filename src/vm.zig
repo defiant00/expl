@@ -1,6 +1,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
+const Node = @import("ast.zig").Node;
 const Lexer = @import("lexer.zig").Lexer;
 const GcAllocator = @import("memory.zig").GcAllocater;
 const out = @import("out.zig");
@@ -113,31 +114,63 @@ pub const Vm = struct {
         try std.testing.expectEqual(s1, s1_2);
     }
 
-    pub fn interpret(self: *Vm, source: []const u8) InterpretResult {
-        _ = self;
-
-        var lexer = Lexer.init(source);
-        var indent: usize = 0;
+    fn parse(self: *Vm, lexer: *Lexer, parent: Node, root: bool) !void {
+        _ = root;
         while (!lexer.isAtEnd()) {
             const tok = lexer.lexToken();
-
-            if (tok.type == .right_paren) indent -= 1;
-
-            {
-                var i = indent;
-                while (i > 0) : (i -= 1) {
-                    out.print("  ", .{});
-                }
-            }
             switch (tok.type) {
-                .left_paren, .right_paren => out.printlnColor("{s}", .{tok.value}, .yellow),
-                .number => out.printlnColor("{s}", .{tok.value}, .blue),
-                .string => out.printlnColor("\"{s}\"", .{tok.value}, .orange),
-                else => out.println("{s}", .{tok.value}),
+                .left_paren => {
+                    const list = Node.List(self.allocator);
+                    try parent.list.append(list);
+                    try self.parse(lexer, list, false);
+                },
+                .right_paren => return, // todo - error if this is the root
+                .identifier => {
+                    const ident = Node.Identifier(self.copyString(tok.value));
+                    try parent.list.append(ident);
+                },
+                .number => {
+                    // todo - number
+                },
+                .string => {
+                    const str = Node.String(self.copyString(tok.value));
+                    try parent.list.append(str);
+                },
+                else => return,
             }
-
-            if (tok.type == .left_paren) indent += 1;
         }
+    }
+
+    pub fn interpret(self: *Vm, source: []const u8) InterpretResult {
+        var lexer = Lexer.init(source);
+        const root = Node.List(self.allocator);
+
+        self.parse(&lexer, root, true) catch {
+            out.printExit("Could not allocate memory for AST.", .{}, 1);
+        };
+
+        // var lexer = Lexer.init(source);
+        // var indent: usize = 0;
+        // while (!lexer.isAtEnd()) {
+        //     const tok = lexer.lexToken();
+
+        //     if (tok.type == .right_paren) indent -= 1;
+
+        //     {
+        //         var i = indent;
+        //         while (i > 0) : (i -= 1) {
+        //             out.print("  ", .{});
+        //         }
+        //     }
+        //     switch (tok.type) {
+        //         .left_paren, .right_paren => out.printlnColor("{s}", .{tok.value}, .yellow),
+        //         .number => out.printlnColor("{s}", .{tok.value}, .blue),
+        //         .string => out.printlnColor("\"{s}\"", .{tok.value}, .orange),
+        //         else => out.println("{s}", .{tok.value}),
+        //     }
+
+        //     if (tok.type == .left_paren) indent += 1;
+        // }
 
         return .ok;
     }

@@ -19,6 +19,11 @@ Simplest overall version focused on validating core ideas without worrying about
 * Some sort of explicit ordering of impure functions
 * Not OO, but explore code reuse options
 
+### Notes
+
+* Should ast.Node have pointers or direct slices and lists?
+* Need to free any AST allocations
+
 ```
 ; a comment
 ; tokens are split on whitespace and may contain any character except '(' ')' ';'
