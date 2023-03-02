@@ -2,7 +2,7 @@
 
 Experimental lazy, functional, data flow programming language.
 
-Implemented in [Zig](https://ziglang.org/), last compiled with 0.11.0-dev.1711+dc1f50e50.
+Implemented in [Zig](https://ziglang.org/), last compiled with 0.11.0-dev.1824+a7a709aaa.
 
 ## Layer 0
 
@@ -59,6 +59,7 @@ Simplest overall version focused on validating core ideas without worrying about
   * Comment or special syntax to store visual node metadata as text, so existing text tools are fully supported.
 * Basic syntax is `label` `:` `expression`
 * Split (only?) on whitespace, so identifiers can be `first-name` or `best!`. Will have to thoroughly investigate how this interacts with other symbols.
+* Recommend tabs for indentation so users can customize how they want.
 
 ```
 # function to repeat each line in a file twice

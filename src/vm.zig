@@ -2,7 +2,7 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 
 const Node = @import("ast.zig").Node;
-const Lexer = @import("lexer.zig").Lexer;
+const layer_0 = @import("layer-0/lexer.zig");
 const GcAllocator = @import("memory.zig").GcAllocater;
 const out = @import("out.zig");
 
@@ -114,7 +114,7 @@ pub const Vm = struct {
         try std.testing.expectEqual(s1, s1_2);
     }
 
-    fn parse(self: *Vm, lexer: *Lexer, parent: Node, root: bool) !void {
+    fn parse(self: *Vm, lexer: *layer_0.Lexer, parent: Node, root: bool) !void {
         _ = root;
         while (!lexer.isAtEnd()) {
             const tok = lexer.lexToken();
@@ -141,13 +141,22 @@ pub const Vm = struct {
         }
     }
 
-    pub fn interpret(self: *Vm, source: []const u8) InterpretResult {
-        var lexer = Lexer.init(source);
-        const root = Node.List(self.allocator);
+    pub fn interpret(self: *Vm, source: []const u8, layer: u8) InterpretResult {
+        switch (layer) {
+            0 => {
+                var lexer = layer_0.Lexer.init(source);
+                const root = Node.List(self.allocator);
 
-        self.parse(&lexer, root, true) catch {
-            out.printExit("Could not allocate memory for AST.", .{}, 1);
-        };
+                self.parse(&lexer, root, true) catch {
+                    out.printExit("Could not allocate memory for AST.", .{}, 1);
+                };
+            },
+            1 => {},
+            else => {
+                out.println("Invalid layer {d}", .{layer});
+                return .compile_error;
+            },
+        }
 
         // var lexer = Lexer.init(source);
         // var indent: usize = 0;
