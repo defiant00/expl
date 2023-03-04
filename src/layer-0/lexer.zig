@@ -2,11 +2,10 @@ const std = @import("std");
 const out = @import("../out.zig");
 
 pub const TokenType = enum {
+    comment,
     left_paren,
     right_paren,
-    identifier,
-    number,
-    string,
+    value,
     error_,
     eof,
 };

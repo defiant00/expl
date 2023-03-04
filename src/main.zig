@@ -5,7 +5,7 @@ const Flags = @import("flags.zig").Flags;
 const out = @import("out.zig");
 const Vm = @import("vm.zig").Vm;
 
-const version = std.SemanticVersion{ .major = 0, .minor = 1, .patch = 0, .pre = "dev.0.6" };
+const version = std.SemanticVersion{ .major = 0, .minor = 1, .patch = 0, .pre = "dev.0.7" };
 
 pub fn main() !void {
     out.init();

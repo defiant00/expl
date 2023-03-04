@@ -1,10 +1,9 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
-const Node = @import("ast.zig").Node;
-const layer_0 = @import("layer-0/lexer.zig");
 const GcAllocator = @import("memory.zig").GcAllocater;
 const out = @import("out.zig");
+const layer_0 = @import("layer-0/parser.zig");
 
 test {
     std.testing.refAllDecls(@This());
@@ -114,49 +113,19 @@ pub const Vm = struct {
         try std.testing.expectEqual(s1, s1_2);
     }
 
-    fn parse(self: *Vm, lexer: *layer_0.Lexer, parent: Node, root: bool) !void {
-        _ = root;
-        while (!lexer.isAtEnd()) {
-            const tok = lexer.lexToken();
-            switch (tok.type) {
-                .left_paren => {
-                    const list = Node.List(self.allocator);
-                    try parent.list.append(list);
-                    try self.parse(lexer, list, false);
-                },
-                .right_paren => return, // todo - error if this is the root
-                .identifier => {
-                    const ident = Node.Identifier(self.copyString(tok.value));
-                    try parent.list.append(ident);
-                },
-                .number => {
-                    // todo - number
-                },
-                .string => {
-                    const str = Node.String(self.copyString(tok.value));
-                    try parent.list.append(str);
-                },
-                else => return,
-            }
-        }
-    }
-
     pub fn interpret(self: *Vm, source: []const u8, layer: u8) InterpretResult {
-        switch (layer) {
-            0 => {
-                var lexer = layer_0.Lexer.init(source);
-                const root = Node.List(self.allocator);
-
-                self.parse(&lexer, root, true) catch {
-                    out.printExit("Could not allocate memory for AST.", .{}, 1);
-                };
+        const root = switch (layer) {
+            0 => layer_0.Parser.parse(self, source),
+            1 => {
+                out.println("Layer 1 is not supported yet.", .{});
+                return .compile_error;
             },
-            1 => {},
             else => {
                 out.println("Invalid layer {d}", .{layer});
                 return .compile_error;
             },
-        }
+        };
+        _ = root;
 
         // var lexer = Lexer.init(source);
         // var indent: usize = 0;
