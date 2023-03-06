@@ -1,5 +1,6 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
+const ArenaAllocator = std.heap.ArenaAllocator;
 
 const GcAllocator = @import("memory.zig").GcAllocater;
 const out = @import("out.zig");
@@ -20,6 +21,9 @@ pub const Vm = struct {
     gc: GcAllocator,
     allocator: Allocator,
 
+    hst_arena: ArenaAllocator,
+    hst_allocator: Allocator,
+
     strings: std.StringHashMap(void),
 
     pub fn init(self: *Vm, allocator: Allocator) void {
@@ -34,6 +38,15 @@ pub const Vm = struct {
         var key_iter = self.strings.keyIterator();
         while (key_iter.next()) |key| self.allocator.free(key.*);
         self.strings.deinit();
+    }
+
+    fn initHst(self: *Vm) void {
+        self.hst_arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+        self.hst_allocator = self.hst_arena.allocator();
+    }
+
+    fn deinitHst(self: *Vm) void {
+        self.hst_arena.deinit();
     }
 
     pub fn collectGarbage(self: *Vm) void {
@@ -114,6 +127,8 @@ pub const Vm = struct {
     }
 
     pub fn interpret(self: *Vm, source: []const u8, layer: u8) InterpretResult {
+        self.initHst();
+
         const root = switch (layer) {
             0 => layer_0.Parser.parse(self, source),
             1 => {
@@ -125,30 +140,12 @@ pub const Vm = struct {
                 return .compile_error;
             },
         };
-        _ = root;
 
-        // var lexer = Lexer.init(source);
-        // var indent: usize = 0;
-        // while (!lexer.isAtEnd()) {
-        //     const tok = lexer.lexToken();
+        root.print();
 
-        //     if (tok.type == .right_paren) indent -= 1;
+        // todo - hst to ast
 
-        //     {
-        //         var i = indent;
-        //         while (i > 0) : (i -= 1) {
-        //             out.print("  ", .{});
-        //         }
-        //     }
-        //     switch (tok.type) {
-        //         .left_paren, .right_paren => out.printlnColor("{s}", .{tok.value}, .yellow),
-        //         .number => out.printlnColor("{s}", .{tok.value}, .blue),
-        //         .string => out.printlnColor("\"{s}\"", .{tok.value}, .orange),
-        //         else => out.println("{s}", .{tok.value}),
-        //     }
-
-        //     if (tok.type == .left_paren) indent += 1;
-        // }
+        self.deinitHst();
 
         return .ok;
     }

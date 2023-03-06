@@ -2,9 +2,10 @@ const std = @import("std");
 const out = @import("../out.zig");
 
 pub const TokenType = enum {
-    comment,
     left_paren,
     right_paren,
+    comment,
+    string,
     value,
     error_,
     eof,
@@ -13,45 +14,56 @@ pub const TokenType = enum {
 pub const Token = struct {
     type: TokenType,
     value: []const u8,
-    positon: usize,
+    line: usize,
+    column: usize,
 };
 
 pub const Lexer = struct {
     source: []const u8,
-    start: usize,
-    current: usize,
+    line: usize,
+    column: usize,
+    start_index: usize,
+    current_index: usize,
 
     pub fn init(source: []const u8) Lexer {
         return .{
             .source = source,
-            .start = 0,
-            .current = 0,
+            .line = 0,
+            .column = 0,
+            .start_index = 0,
+            .current_index = 0,
         };
     }
 
     pub fn isAtEnd(self: *Lexer) bool {
-        return self.current >= self.source.len;
+        return self.current_index >= self.source.len;
+    }
+
+    fn incrLine(self: *Lexer) void {
+        self.line += 1;
+        self.column = 0;
     }
 
     fn advance(self: *Lexer, count: usize) void {
-        self.current += count;
-        if (self.isAtEnd()) self.current = self.source.len;
+        self.current_index += count;
+        if (self.isAtEnd()) self.current_index = self.source.len;
     }
 
     fn peek(self: *Lexer, offset: usize) u8 {
-        const index = self.current + offset;
+        const index = self.current_index + offset;
         return if (index < self.source.len) self.source[index] else 0;
     }
 
     fn resetLength(self: *Lexer) void {
-        self.start = self.current;
+        self.start_index = self.current_index;
     }
 
     fn token(self: *Lexer, token_type: TokenType) Token {
         return .{
             .type = token_type,
-            .value = self.source[self.start..self.current],
-            .positon = self.start,
+            .value = self.source[self.start_index..self.current_index],
+            .line = self.line,
+            .column = self.column,
         };
     }
 
@@ -59,55 +71,23 @@ pub const Lexer = struct {
         return .{
             .type = .error_,
             .value = message,
-            .positon = self.start,
+            .line = self.line,
+            .column = self.column,
         };
     }
 
-    fn isDecimal(c: u8) bool {
-        return switch (c) {
-            '0'...'9', '_' => true,
-            else => false,
-        };
-    }
-
-    fn isDigit(c: u8) bool {
-        return switch (c) {
-            '0'...'9' => true,
-            else => false,
-        };
-    }
-
-    fn isIdentifier(c: u8) bool {
+    fn isValue(c: u8) bool {
         return switch (c) {
             ' ', '\t', '\r', '\n', '(', ')', ';', 0 => false,
             else => true,
         };
     }
 
-    fn identifier(self: *Lexer, first: u8) Token {
-        var number = isDigit(first);
-
-        // accept numbers
-        if (number) {
-            while (isDecimal(self.peek(0))) self.advance(1);
-
-            if (self.peek(0) == '.' and isDecimal(self.peek(1))) {
-                // accept the . and digit
-                self.advance(2);
-
-                while (isDecimal(self.peek(0))) self.advance(1);
-            }
-        }
-
-        // if any other characters are encountered then it's an identifier
-        if (isIdentifier(self.peek(0))) {
-            number = false;
-            self.advance(1);
-
-            while (isIdentifier(self.peek(0))) self.advance(1);
-        }
-
-        return self.token(if (number) .number else .identifier);
+    fn comment(self: *Lexer) Token {
+        // discard ;
+        self.resetLength();
+        while (self.peek(0) != '\n' and !self.isAtEnd()) self.advance(1);
+        return self.token(.comment);
     }
 
     fn string(self: *Lexer) Token {
@@ -115,6 +95,7 @@ pub const Lexer = struct {
         self.resetLength();
 
         while (self.peek(0) != '"' and !self.isAtEnd()) {
+            if (self.peek(0) == '\n') self.incrLine();
             if (self.peek(0) == '\\' and self.peek(1) != 0) self.advance(1);
             self.advance(1);
         }
@@ -130,6 +111,11 @@ pub const Lexer = struct {
         return tok;
     }
 
+    fn value(self: *Lexer) Token {
+        while (isValue(self.peek(0))) self.advance(1);
+        return self.token(.value);
+    }
+
     pub fn lexToken(self: *Lexer) Token {
         self.resetLength();
 
@@ -138,15 +124,16 @@ pub const Lexer = struct {
             self.advance(1);
 
             switch (c) {
-                ' ', '\t', '\r', '\n' => self.resetLength(),
-                '(' => return self.token(.left_paren),
-                ')' => return self.token(.right_paren),
-                ';' => {
-                    while (self.peek(0) != '\n' and !self.isAtEnd()) self.advance(1);
+                ' ', '\t', '\r' => self.resetLength(),
+                '\n' => {
+                    self.incrLine();
                     self.resetLength();
                 },
+                '(' => return self.token(.left_paren),
+                ')' => return self.token(.right_paren),
+                ';' => return self.comment(),
                 '"' => return self.string(),
-                else => return self.identifier(c),
+                else => return self.value(),
             }
         }
 

@@ -4,17 +4,26 @@ const ArrayList = std.ArrayList;
 
 const out = @import("out.zig");
 
+const NodeType = enum {
+    comment,
+    file,
+    list,
+    string,
+    value,
+};
+
 pub const Node = struct {
-    as: union {
+    as: union(NodeType) {
         comment: []const u8,
         file: *ArrayList(Node),
         list: *ArrayList(Node),
+        string: []const u8,
         value: []const u8,
     },
     line: usize,
     column: usize,
 
-    pub fn getType(self: Node) @TypeOf(Node.as) {
+    pub fn getType(self: Node) NodeType {
         return self.as;
     }
 
@@ -38,6 +47,10 @@ pub const Node = struct {
         return .{ .as = .{ .list = new_list }, .line = pos_line, .column = pos_col };
     }
 
+    pub fn String(val: []const u8, pos_line: usize, pos_col: usize) Node {
+        return .{ .as = .{ .string = val }, .line = pos_line, .column = pos_col };
+    }
+
     pub fn Value(val: []const u8, pos_line: usize, pos_col: usize) Node {
         return .{ .as = .{ .value = val }, .line = pos_line, .column = pos_col };
     }
@@ -52,6 +65,10 @@ pub const Node = struct {
 
     pub fn isList(self: Node) bool {
         return self.as == .list;
+    }
+
+    pub fn isString(self: Node) bool {
+        return self.as == .string;
     }
 
     pub fn isValue(self: Node) bool {
@@ -70,7 +87,38 @@ pub const Node = struct {
         return self.as.list;
     }
 
+    pub fn asString(self: Node) []const u8 {
+        return self.as.string;
+    }
+
     pub fn asValue(self: Node) []const u8 {
         return self.as.value;
+    }
+
+    pub fn print(self: Node) void {
+        // todo - properly use the position properties for better formatting
+        switch (self.getType()) {
+            .comment => out.println(";{s}", .{self.asComment()}),
+            .file => printList(self.asFile()),
+            .list => {
+                out.print("(", .{});
+                printList(self.asList());
+                out.println(")", .{});
+            },
+            .string => out.print("\"{s}\"", .{self.asString()}),
+            .value => out.print("{s}", .{self.asValue()}),
+        }
+    }
+
+    fn printList(list: *ArrayList(Node)) void {
+        var first = true;
+        for (list.items) |v| {
+            if (first) {
+                first = false;
+            } else {
+                out.print(" ", .{});
+            }
+            v.print();
+        }
     }
 };
