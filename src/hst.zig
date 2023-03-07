@@ -98,7 +98,7 @@ pub const Node = struct {
 
     pub fn format(self: Node, writer: anytype, layer: u8) !void {
         switch (layer) {
-            0 => try layer_0_format.format(self, writer),
+            0 => try layer_0_format.format(writer, self, 0),
             else => out.printExit("Invalid layer {d}", .{layer}, 1),
         }
     }
