@@ -7,50 +7,76 @@ const Node = @import("../hst.zig").Node;
 pub fn format(writer: anytype, node: Node, indent_level: usize) Error!void {
     switch (node.getType()) {
         .comment => try writer.print(";{s}", .{node.asComment()}),
-        .file => {
-            try formatList(writer, node.asFile(), node.line, indent_level);
-            _ = try writer.write("\n");
-        },
-        .list => {
-            _ = try writer.write("(");
-            try formatList(writer, node.asList(), node.line, indent_level + 1);
-            _ = try writer.write(")");
-        },
+        .file => try formatFile(writer, node, indent_level),
+        .list => try formatList(writer, node, indent_level),
         .string => try writer.print("\"{s}\"", .{node.asString()}),
         .value => _ = try writer.write(node.asValue()),
     }
 }
 
-fn formatList(writer: anytype, list: *ArrayList(Node), start_line: usize, indent_level: usize) Error!void {
-    var prior_line = start_line;
+fn formatFile(writer: anytype, file: Node, indent_level: usize) Error!void {
+    const items = file.asFile().items;
+    if (items.len > 0) {
+        try format(writer, items[0], indent_level);
+        var prior_line = items[0].end_line;
 
-    if (list.items.len > 0) {
-        if (list.items[0].line > prior_line) {
-            if (list.items[0].line == prior_line + 1) {
-                _ = try writer.write("\n");
+        for (items[1..]) |node| {
+            if (node.start_line == prior_line and node.getType() == .comment) {
+                _ = try writer.write(" ");
             } else {
-                _ = try writer.write("\n\n");
+                if (node.start_line > prior_line + 1) {
+                    _ = try writer.write("\n\n");
+                } else {
+                    _ = try writer.write("\n");
+                }
+                try indent(writer, indent_level);
             }
-            try indent(writer, indent_level);
+            try format(writer, node, indent_level);
+            prior_line = node.end_line;
         }
-        try format(writer, list.items[0], indent_level);
-        prior_line = list.items[0].line;
 
-        for (list.items[1..]) |node| {
-            if (node.line > prior_line) {
-                if (node.line == prior_line + 1) {
+        _ = try writer.write("\n");
+    }
+}
+
+fn formatList(writer: anytype, list: Node, indent_level: usize) Error!void {
+    const items = list.asList().items;
+    var prior_line = list.start_line;
+    var cur_indent = indent_level;
+
+    _ = try writer.write("(");
+
+    if (items.len > 0) {
+        if (items[0].start_line > prior_line) {
+            cur_indent = indent_level + 1;
+            _ = try writer.write("\n");
+            try indent(writer, cur_indent);
+        }
+        try format(writer, items[0], cur_indent);
+        prior_line = items[0].end_line;
+
+        for (items[1..]) |node| {
+            if (node.start_line > prior_line) {
+                cur_indent = indent_level + 1;
+                if (node.start_line == prior_line + 1) {
                     _ = try writer.write("\n");
                 } else {
                     _ = try writer.write("\n\n");
                 }
-                try indent(writer, indent_level);
+                try indent(writer, cur_indent);
             } else {
                 _ = try writer.write(" ");
             }
-            try format(writer, node, indent_level);
-            prior_line = node.line;
+            try format(writer, node, cur_indent);
+            prior_line = node.end_line;
         }
     }
+
+    if (cur_indent > indent_level) {
+        _ = try writer.write("\n");
+        try indent(writer, indent_level);
+    }
+    _ = try writer.write(")");
 }
 
 fn indent(writer: anytype, indent_level: usize) !void {

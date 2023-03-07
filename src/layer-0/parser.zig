@@ -8,43 +8,45 @@ const Vm = @import("../vm.zig").Vm;
 
 pub fn parse(vm: *Vm, source: []const u8) Node {
     var lexer = Lexer.init(source);
-    const root = Node.File(vm.hst_allocator);
+    var root = Node.File(vm.hst_allocator);
 
-    parseHelper(vm, &lexer, root.asFile(), false) catch {
+    parseHelper(vm, &lexer, &root, root.asFile()) catch {
         out.printExit("Could not allocate memory for HST.", .{}, 1);
     };
 
     return root;
 }
 
-fn parseHelper(vm: *Vm, lexer: *Lexer, parent: *ArrayList(Node), is_list: bool) !void {
+fn parseHelper(vm: *Vm, lexer: *Lexer, parent_node: *Node, parent: *ArrayList(Node)) !void {
     while (true) {
         const tok = lexer.lexToken();
         switch (tok.type) {
             .left_paren => {
-                const list = Node.List(vm.hst_allocator, tok.line, tok.column);
+                var list = Node.List(vm.hst_allocator, tok.start_line, tok.start_column);
+                try parseHelper(vm, lexer, &list, list.asList());
                 try parent.append(list);
-                try parseHelper(vm, lexer, list.asList(), true);
             },
             .right_paren => {
-                if (!is_list) {
+                if (!parent_node.isList()) {
                     // todo - error
                 }
+                parent_node.end_line = tok.end_line;
+                parent_node.end_column = tok.end_column;
                 return;
             },
             .comment => {
                 const val = vm.copyString(tok.value);
-                const node = Node.Comment(val, tok.line, tok.column);
+                const node = Node.Comment(val, tok.start_line, tok.start_column);
                 try parent.append(node);
             },
             .string => {
                 const val = vm.copyString(tok.value);
-                const node = Node.String(val, tok.line, tok.column);
+                const node = Node.String(val, tok.start_line, tok.start_column, tok.end_line, tok.end_column);
                 try parent.append(node);
             },
             .value => {
                 const val = vm.copyString(tok.value);
-                const node = Node.Value(val, tok.line, tok.column);
+                const node = Node.Value(val, tok.start_line, tok.start_column);
                 try parent.append(node);
             },
             else => return,

@@ -21,15 +21,17 @@ pub const Node = struct {
         string: []const u8,
         value: []const u8,
     },
-    line: usize,
-    column: usize,
+    start_line: usize,
+    start_column: usize,
+    end_line: usize,
+    end_column: usize,
 
     pub fn getType(self: Node) NodeType {
         return self.as;
     }
 
-    pub fn Comment(val: []const u8, pos_line: usize, pos_col: usize) Node {
-        return .{ .as = .{ .comment = val }, .line = pos_line, .column = pos_col };
+    pub fn Comment(val: []const u8, line: usize, col: usize) Node {
+        return .{ .as = .{ .comment = val }, .start_line = line, .start_column = col, .end_line = line, .end_column = col + val.len };
     }
 
     pub fn File(allocator: Allocator) Node {
@@ -37,23 +39,23 @@ pub const Node = struct {
             out.printExit("Could not allocate memory for file.", .{}, 1);
         };
         new_file.* = ArrayList(Node).init(allocator);
-        return .{ .as = .{ .file = new_file }, .line = 0, .column = 0 };
+        return .{ .as = .{ .file = new_file }, .start_line = 0, .start_column = 0, .end_line = 0, .end_column = 0 };
     }
 
-    pub fn List(allocator: Allocator, pos_line: usize, pos_col: usize) Node {
+    pub fn List(allocator: Allocator, line: usize, col: usize) Node {
         var new_list = allocator.create(ArrayList(Node)) catch {
             out.printExit("Could not allocate memory for list.", .{}, 1);
         };
         new_list.* = ArrayList(Node).init(allocator);
-        return .{ .as = .{ .list = new_list }, .line = pos_line, .column = pos_col };
+        return .{ .as = .{ .list = new_list }, .start_line = line, .start_column = col, .end_line = line, .end_column = col };
     }
 
-    pub fn String(val: []const u8, pos_line: usize, pos_col: usize) Node {
-        return .{ .as = .{ .string = val }, .line = pos_line, .column = pos_col };
+    pub fn String(val: []const u8, s_line: usize, s_col: usize, e_line: usize, e_col: usize) Node {
+        return .{ .as = .{ .string = val }, .start_line = s_line, .start_column = s_col, .end_line = e_line, .end_column = e_col };
     }
 
-    pub fn Value(val: []const u8, pos_line: usize, pos_col: usize) Node {
-        return .{ .as = .{ .value = val }, .line = pos_line, .column = pos_col };
+    pub fn Value(val: []const u8, line: usize, col: usize) Node {
+        return .{ .as = .{ .value = val }, .start_line = line, .start_column = col, .end_line = line, .end_column = col + val.len };
     }
 
     pub fn isComment(self: Node) bool {
