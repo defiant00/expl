@@ -5,7 +5,7 @@ const Flags = @import("flags.zig").Flags;
 const out = @import("out.zig");
 const Vm = @import("vm.zig").Vm;
 
-const version = std.SemanticVersion{ .major = 0, .minor = 1, .patch = 0, .pre = "dev.0.7" };
+const version = std.SemanticVersion{ .major = 0, .minor = 1, .patch = 0, .pre = "dev.0.8" };
 
 pub fn main() !void {
     out.init();
@@ -23,7 +23,16 @@ pub fn main() !void {
     while (args.next()) |arg| try arg_list.append(arg);
 
     var valid = false;
-    if (arg_list.items.len >= 2 and std.mem.eql(u8, arg_list.items[1], "help")) {
+    if (arg_list.items.len >= 3 and std.mem.eql(u8, arg_list.items[1], "format")) {
+        valid = true;
+        const flags = parseFlags(arg_list.items[3..]);
+
+        var vm: Vm = undefined;
+        vm.init(allocator);
+        defer vm.deinit();
+
+        try formatFile(&vm, arg_list.items[2], flags);
+    } else if (arg_list.items.len >= 2 and std.mem.eql(u8, arg_list.items[1], "help")) {
         valid = true;
         _ = parseFlags(arg_list.items[2..]);
         printUsage();
@@ -35,7 +44,7 @@ pub fn main() !void {
         vm.init(allocator);
         defer vm.deinit();
 
-        try runFile(allocator, &vm, arg_list.items[2], flags);
+        try runFile(&vm, arg_list.items[2], flags);
     } else if (arg_list.items.len >= 2 and std.mem.eql(u8, arg_list.items[1], "version")) {
         valid = true;
         _ = parseFlags(arg_list.items[2..]);
@@ -67,8 +76,10 @@ fn printUsage() void {
         \\Usage: expl <command> [flags]
         \\
         \\Commands:
-        \\  help            Print this help and exit
+        \\  format <file>   Format specified file
         \\  run <file>      Run specified file
+        \\
+        \\  help            Print this help and exit
         \\  version         Print version and exit
         \\
         \\Flags:
@@ -77,12 +88,27 @@ fn printUsage() void {
     , .{});
 }
 
-fn runFile(allocator: Allocator, vm: *Vm, path: []const u8, flags: Flags) !void {
+fn formatFile(vm: *Vm, path: []const u8, flags: Flags) !void {
+    var file = try std.fs.cwd().openFile(path, .{});
+
+    const source = try file.readToEndAlloc(vm.parent_allocator, std.math.maxInt(usize));
+    defer vm.parent_allocator.free(source);
+
+    file.close();
+    file = try std.fs.cwd().createFile(path, .{});
+    defer file.close();
+
+    var buffered_writer = std.io.bufferedWriter(file.writer());
+    try vm.format(buffered_writer.writer(), source, flags.layer);
+    try buffered_writer.flush();
+}
+
+fn runFile(vm: *Vm, path: []const u8, flags: Flags) !void {
     var file = try std.fs.cwd().openFile(path, .{});
     defer file.close();
 
-    const source = try file.readToEndAlloc(allocator, std.math.maxInt(usize));
-    defer allocator.free(source);
+    const source = try file.readToEndAlloc(vm.parent_allocator, std.math.maxInt(usize));
+    defer vm.parent_allocator.free(source);
 
     const result = vm.interpret(source, flags.layer);
 

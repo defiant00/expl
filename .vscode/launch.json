@@ -14,6 +14,13 @@
             "request": "launch",
             "script": "zig build run -- run examples/layer-0/test.expl -layer-0",
             "args": []
+        },
+        {
+            "name": "format test.expl",
+            "type": "PowerShell",
+            "request": "launch",
+            "script": "zig build run -- format examples/layer-0/test.expl -layer-0",
+            "args": []
         }
     ]
 }

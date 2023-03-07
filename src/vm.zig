@@ -2,9 +2,10 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const ArenaAllocator = std.heap.ArenaAllocator;
 
+const hst = @import("hst.zig");
 const GcAllocator = @import("memory.zig").GcAllocater;
 const out = @import("out.zig");
-const layer_0 = @import("layer-0/parser.zig");
+const layer_0_parser = @import("layer-0/parser.zig");
 
 test {
     std.testing.refAllDecls(@This());
@@ -126,22 +127,29 @@ pub const Vm = struct {
         try std.testing.expectEqual(s1, s1_2);
     }
 
+    fn getHst(self: *Vm, source: []const u8, layer: u8) hst.Node {
+        return switch (layer) {
+            0 => layer_0_parser.parse(self, source),
+            else => out.printExit("Invalid layer {d}", .{layer}, 1),
+        };
+    }
+
+    pub fn format(self: *Vm, writer: anytype, source: []const u8, layer: u8) !void {
+        self.initHst();
+
+        const root = getHst(self, source, layer);
+        try root.format(writer, layer);
+
+        self.deinitHst();
+    }
+
     pub fn interpret(self: *Vm, source: []const u8, layer: u8) InterpretResult {
         self.initHst();
 
-        const root = switch (layer) {
-            0 => layer_0.Parser.parse(self, source),
-            1 => {
-                out.println("Layer 1 is not supported yet.", .{});
-                return .compile_error;
-            },
-            else => {
-                out.println("Invalid layer {d}", .{layer});
-                return .compile_error;
-            },
+        const root = getHst(self, source, layer);
+        root.format(out.stdout, layer) catch {
+            return .compile_error;
         };
-
-        root.print();
 
         // todo - hst to ast
 

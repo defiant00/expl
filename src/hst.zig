@@ -2,6 +2,7 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 
+const layer_0_format = @import("layer-0/format.zig");
 const out = @import("out.zig");
 
 const NodeType = enum {
@@ -95,30 +96,10 @@ pub const Node = struct {
         return self.as.value;
     }
 
-    pub fn print(self: Node) void {
-        // todo - properly use the position properties for better formatting
-        switch (self.getType()) {
-            .comment => out.println(";{s}", .{self.asComment()}),
-            .file => printList(self.asFile()),
-            .list => {
-                out.print("(", .{});
-                printList(self.asList());
-                out.println(")", .{});
-            },
-            .string => out.print("\"{s}\"", .{self.asString()}),
-            .value => out.print("{s}", .{self.asValue()}),
-        }
-    }
-
-    fn printList(list: *ArrayList(Node)) void {
-        var first = true;
-        for (list.items) |v| {
-            if (first) {
-                first = false;
-            } else {
-                out.print(" ", .{});
-            }
-            v.print();
+    pub fn format(self: Node, writer: anytype, layer: u8) !void {
+        switch (layer) {
+            0 => try layer_0_format.format(self, writer),
+            else => out.printExit("Invalid layer {d}", .{layer}, 1),
         }
     }
 };
