@@ -2,8 +2,8 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 
+const console = @import("console.zig");
 const layer_0_format = @import("layer-0/format.zig");
-const out = @import("out.zig");
 
 const NodeType = enum {
     comment,
@@ -36,7 +36,7 @@ pub const Node = struct {
 
     pub fn File(allocator: Allocator) Node {
         var new_file = allocator.create(ArrayList(Node)) catch {
-            out.printExit("Could not allocate memory for file.", .{}, 1);
+            console.printExit("Could not allocate memory for file.", .{}, 1);
         };
         new_file.* = ArrayList(Node).init(allocator);
         return .{ .as = .{ .file = new_file }, .start_line = 0, .start_column = 0, .end_line = 0, .end_column = 0 };
@@ -44,7 +44,7 @@ pub const Node = struct {
 
     pub fn List(allocator: Allocator, line: usize, col: usize) Node {
         var new_list = allocator.create(ArrayList(Node)) catch {
-            out.printExit("Could not allocate memory for list.", .{}, 1);
+            console.printExit("Could not allocate memory for list.", .{}, 1);
         };
         new_list.* = ArrayList(Node).init(allocator);
         return .{ .as = .{ .list = new_list }, .start_line = line, .start_column = col, .end_line = line, .end_column = col };
@@ -101,7 +101,7 @@ pub const Node = struct {
     pub fn format(self: Node, writer: anytype, layer: u8) !void {
         switch (layer) {
             0 => try layer_0_format.format(writer, self, 0),
-            else => out.printExit("Invalid layer {d}", .{layer}, 1),
+            else => console.printExit("Invalid layer {d}", .{layer}, 1),
         }
     }
 };

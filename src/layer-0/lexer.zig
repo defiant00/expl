@@ -1,5 +1,4 @@
 const std = @import("std");
-const out = @import("../out.zig");
 
 pub const TokenType = enum {
     left_paren,

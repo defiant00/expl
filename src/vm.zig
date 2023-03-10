@@ -2,9 +2,9 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const ArenaAllocator = std.heap.ArenaAllocator;
 
+const console = @import("console.zig");
 const hst = @import("hst.zig");
 const GcAllocator = @import("memory.zig").GcAllocater;
-const out = @import("out.zig");
 const layer_0_parser = @import("layer-0/parser.zig");
 
 test {
@@ -59,11 +59,11 @@ pub const Vm = struct {
         if (interned) |i| return i;
 
         const heap_chars = self.allocator.alloc(u8, chars.len) catch {
-            out.printExit("Could not allocate memory for string.", .{}, 1);
+            console.printExit("Could not allocate memory for string.", .{}, 1);
         };
         std.mem.copy(u8, heap_chars, chars);
         self.strings.put(heap_chars, {}) catch {
-            out.printExit("Could not allocate memory for string.", .{}, 1);
+            console.printExit("Could not allocate memory for string.", .{}, 1);
         };
         return heap_chars;
     }
@@ -93,7 +93,7 @@ pub const Vm = struct {
             return i;
         }
         self.strings.put(chars, {}) catch {
-            out.printExit("Could not allocate memory for string.", .{}, 1);
+            console.printExit("Could not allocate memory for string.", .{}, 1);
         };
         return chars;
     }
@@ -130,7 +130,7 @@ pub const Vm = struct {
     fn getHst(self: *Vm, source: []const u8, layer: u8) hst.Node {
         return switch (layer) {
             0 => layer_0_parser.parse(self, source),
-            else => out.printExit("Invalid layer {d}", .{layer}, 1),
+            else => console.printExit("Invalid layer {d}", .{layer}, 1),
         };
     }
 
@@ -147,7 +147,7 @@ pub const Vm = struct {
         self.initHst();
 
         const root = getHst(self, source, layer);
-        root.format(out.stdout, layer) catch {
+        root.format(console.stdout, layer) catch {
             return .compile_error;
         };
 

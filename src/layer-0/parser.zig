@@ -1,9 +1,9 @@
 const std = @import("std");
 const ArrayList = std.ArrayList;
 
+const console = @import("../console.zig");
 const Lexer = @import("lexer.zig").Lexer;
 const Node = @import("../hst.zig").Node;
-const out = @import("../out.zig");
 const Vm = @import("../vm.zig").Vm;
 
 pub fn parse(vm: *Vm, source: []const u8) Node {
@@ -11,7 +11,7 @@ pub fn parse(vm: *Vm, source: []const u8) Node {
     var root = Node.File(vm.hst_allocator);
 
     parseHelper(vm, &lexer, &root, root.asFile()) catch {
-        out.printExit("Could not allocate memory for HST.", .{}, 1);
+        console.printExit("Could not allocate memory for HST.", .{}, 1);
     };
 
     return root;

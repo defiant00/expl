@@ -2,14 +2,14 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "current file (layer 0)",
+            "name": "run current file (layer 0)",
             "type": "PowerShell",
             "request": "launch",
             "script": "zig build run -- run ${file} -layer-0",
             "args": []
         },
         {
-            "name": "test.expl",
+            "name": "run test.expl",
             "type": "PowerShell",
             "request": "launch",
             "script": "zig build run -- run examples/layer-0/test.expl -layer-0",

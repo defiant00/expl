@@ -1,15 +1,15 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
+const console = @import("console.zig");
 const Flags = @import("flags.zig").Flags;
-const out = @import("out.zig");
 const Vm = @import("vm.zig").Vm;
 
-const version = std.SemanticVersion{ .major = 0, .minor = 1, .patch = 0, .pre = "dev.0.8" };
+const version = std.SemanticVersion{ .major = 0, .minor = 1, .patch = 0, .pre = "dev.0.9" };
 
 pub fn main() !void {
-    out.init();
-    defer out.flush();
+    console.init();
+    defer console.flush();
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     var allocator = gpa.allocator();
@@ -48,13 +48,13 @@ pub fn main() !void {
     } else if (arg_list.items.len >= 2 and std.mem.eql(u8, arg_list.items[1], "version")) {
         valid = true;
         _ = parseFlags(arg_list.items[2..]);
-        try version.format("", .{}, out.stdout);
-        out.println("", .{});
+        try version.format("", .{}, console.stdout);
+        console.println("", .{});
     }
 
     if (!valid) {
         printUsage();
-        out.printExit("", .{}, 64);
+        console.printExit("", .{}, 64);
     }
 }
 
@@ -65,14 +65,14 @@ fn parseFlags(flags: []const []const u8) Flags {
             result.layer = 0;
         } else if (std.mem.eql(u8, flag, "-no-style")) {
             result.no_style = true;
-            out.no_style = true;
+            console.no_style = true;
         }
     }
     return result;
 }
 
 fn printUsage() void {
-    out.println(
+    console.println(
         \\Usage: expl <command> [flags]
         \\
         \\Commands:
@@ -112,6 +112,6 @@ fn runFile(vm: *Vm, path: []const u8, flags: Flags) !void {
 
     const result = vm.interpret(source, flags.layer);
 
-    if (result == .compile_error) out.printExit("", .{}, 65);
-    if (result == .runtime_error) out.printExit("", .{}, 70);
+    if (result == .compile_error) console.printExit("", .{}, 65);
+    if (result == .runtime_error) console.printExit("", .{}, 70);
 }
