@@ -5,54 +5,42 @@ const console = @import("console.zig");
 const Flags = @import("flags.zig").Flags;
 const Vm = @import("vm.zig").Vm;
 
-const version = std.SemanticVersion{ .major = 0, .minor = 1, .patch = 0, .pre = "dev.0.9" };
+const version = std.SemanticVersion{ .major = 0, .minor = 1, .patch = 0, .pre = "dev.10" };
 
 pub fn main() !void {
     console.init();
     defer console.flush();
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    var allocator = gpa.allocator();
+    var alloc = gpa.allocator();
 
-    var args = try std.process.argsWithAllocator(allocator);
-    defer args.deinit();
+    const args = try std.process.argsAlloc(alloc);
+    defer std.process.argsFree(alloc, args);
 
-    var arg_list = std.ArrayList([]const u8).init(allocator);
-    defer arg_list.deinit();
-
-    while (args.next()) |arg| try arg_list.append(arg);
-
-    var valid = false;
-    if (arg_list.items.len >= 3 and std.mem.eql(u8, arg_list.items[1], "format")) {
-        valid = true;
-        const flags = parseFlags(arg_list.items[3..]);
+    if (args.len >= 3 and std.mem.eql(u8, args[1], "format")) {
+        const flags = parseFlags(args[3..]);
 
         var vm: Vm = undefined;
-        vm.init(allocator);
+        vm.init(alloc);
         defer vm.deinit();
 
-        try formatFile(&vm, arg_list.items[2], flags);
-    } else if (arg_list.items.len >= 2 and std.mem.eql(u8, arg_list.items[1], "help")) {
-        valid = true;
-        _ = parseFlags(arg_list.items[2..]);
+        try formatFile(&vm, args[2], flags);
+    } else if (args.len >= 2 and std.mem.eql(u8, args[1], "help")) {
+        _ = parseFlags(args[2..]);
         printUsage();
-    } else if (arg_list.items.len >= 3 and std.mem.eql(u8, arg_list.items[1], "run")) {
-        valid = true;
-        const flags = parseFlags(arg_list.items[3..]);
+    } else if (args.len >= 3 and std.mem.eql(u8, args[1], "run")) {
+        const flags = parseFlags(args[3..]);
 
         var vm: Vm = undefined;
-        vm.init(allocator);
+        vm.init(alloc);
         defer vm.deinit();
 
-        try runFile(&vm, arg_list.items[2], flags);
-    } else if (arg_list.items.len >= 2 and std.mem.eql(u8, arg_list.items[1], "version")) {
-        valid = true;
-        _ = parseFlags(arg_list.items[2..]);
+        try runFile(&vm, args[2], flags);
+    } else if (args.len >= 2 and std.mem.eql(u8, args[1], "version")) {
+        _ = parseFlags(args[2..]);
         try version.format("", .{}, console.stdout);
         console.println("", .{});
-    }
-
-    if (!valid) {
+    } else {
         printUsage();
         console.printExit("", .{}, 64);
     }
@@ -85,6 +73,7 @@ fn printUsage() void {
         \\Flags:
         \\  -layer-0        Use language layer 0
         \\  -no-style       Output as plain text
+        \\
     , .{});
 }
 

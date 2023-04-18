@@ -10,7 +10,7 @@ pub fn format(writer: anytype, node: Node, indent_level: usize) Error!void {
         .file => try formatFile(writer, node, indent_level),
         .list => try formatList(writer, node, indent_level),
         .string => try writer.print("\"{s}\"", .{node.asString()}),
-        .value => _ = try writer.write(node.asValue()),
+        .value => try writer.writeAll(node.asValue()),
     }
 }
 
@@ -22,12 +22,12 @@ fn formatFile(writer: anytype, file: Node, indent_level: usize) Error!void {
 
         for (items[1..]) |node| {
             if (node.start_line == prior_line and node.getType() == .comment) {
-                _ = try writer.write(" ");
+                try writer.writeAll(" ");
             } else {
                 if (node.start_line > prior_line + 1) {
-                    _ = try writer.write("\n\n");
+                    try writer.writeAll("\n\n");
                 } else {
-                    _ = try writer.write("\n");
+                    try writer.writeAll("\n");
                 }
                 try indent(writer, indent_level);
             }
@@ -35,7 +35,7 @@ fn formatFile(writer: anytype, file: Node, indent_level: usize) Error!void {
             prior_line = node.end_line;
         }
 
-        _ = try writer.write("\n");
+        try writer.writeAll("\n");
     }
 }
 
@@ -44,12 +44,12 @@ fn formatList(writer: anytype, list: Node, indent_level: usize) Error!void {
     var prior_line = list.start_line;
     var cur_indent = indent_level;
 
-    _ = try writer.write("(");
+    try writer.writeAll("(");
 
     if (items.len > 0) {
         if (items[0].start_line > prior_line) {
             cur_indent = indent_level + 1;
-            _ = try writer.write("\n");
+            try writer.writeAll("\n");
             try indent(writer, cur_indent);
         }
         try format(writer, items[0], cur_indent);
@@ -59,13 +59,13 @@ fn formatList(writer: anytype, list: Node, indent_level: usize) Error!void {
             if (node.start_line > prior_line) {
                 cur_indent = indent_level + 1;
                 if (node.start_line == prior_line + 1) {
-                    _ = try writer.write("\n");
+                    try writer.writeAll("\n");
                 } else {
-                    _ = try writer.write("\n\n");
+                    try writer.writeAll("\n\n");
                 }
                 try indent(writer, cur_indent);
             } else {
-                _ = try writer.write(" ");
+                try writer.writeAll(" ");
             }
             try format(writer, node, cur_indent);
             prior_line = node.end_line;
@@ -73,14 +73,14 @@ fn formatList(writer: anytype, list: Node, indent_level: usize) Error!void {
     }
 
     if (cur_indent > indent_level) {
-        _ = try writer.write("\n");
+        try writer.writeAll("\n");
         try indent(writer, indent_level);
     }
-    _ = try writer.write(")");
+    try writer.writeAll(")");
 }
 
 fn indent(writer: anytype, indent_level: usize) !void {
     for (0..indent_level) |_| {
-        _ = try writer.write("\t");
+        try writer.writeAll("\t");
     }
 }
