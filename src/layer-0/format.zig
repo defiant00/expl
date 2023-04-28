@@ -1,5 +1,4 @@
 const std = @import("std");
-const ArrayList = std.ArrayList;
 const Error = std.fs.File.WriteError;
 
 const Node = @import("../hst.zig").Node;
@@ -9,12 +8,12 @@ pub fn format(writer: anytype, node: Node, indent_level: usize) Error!void {
         .comment => try writer.print(";{s}", .{node.asComment()}),
         .file => try formatFile(writer, node, indent_level),
         .list => try formatList(writer, node, indent_level),
+        .literal => try writer.writeAll(node.asLiteral()),
         .string => try writer.print("\"{s}\"", .{node.asString()}),
-        .value => try writer.writeAll(node.asValue()),
     }
 }
 
-fn formatFile(writer: anytype, file: Node, indent_level: usize) Error!void {
+fn formatFile(writer: anytype, file: Node, indent_level: usize) !void {
     const items = file.asFile().items;
     if (items.len > 0) {
         try format(writer, items[0], indent_level);
@@ -39,7 +38,7 @@ fn formatFile(writer: anytype, file: Node, indent_level: usize) Error!void {
     }
 }
 
-fn formatList(writer: anytype, list: Node, indent_level: usize) Error!void {
+fn formatList(writer: anytype, list: Node, indent_level: usize) !void {
     const items = list.asList().items;
     var prior_line = list.start_line;
     var cur_indent = indent_level;

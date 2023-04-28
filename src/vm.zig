@@ -1,8 +1,6 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-const ArenaAllocator = std.heap.ArenaAllocator;
 
-const console = @import("console.zig");
 const hst = @import("hst.zig");
 const GcAllocator = @import("memory.zig").GcAllocater;
 const layer_0_parser = @import("layer-0/parser.zig");
@@ -11,19 +9,10 @@ test {
     std.testing.refAllDecls(@This());
 }
 
-pub const InterpretResult = enum {
-    ok,
-    compile_error,
-    runtime_error,
-};
-
 pub const Vm = struct {
     parent_allocator: Allocator,
     gc: GcAllocator,
     allocator: Allocator,
-
-    hst_arena: ArenaAllocator,
-    hst_allocator: Allocator,
 
     strings: std.StringHashMap(void),
 
@@ -41,30 +30,17 @@ pub const Vm = struct {
         self.strings.deinit();
     }
 
-    fn initHst(self: *Vm) void {
-        self.hst_arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-        self.hst_allocator = self.hst_arena.allocator();
-    }
-
-    fn deinitHst(self: *Vm) void {
-        self.hst_arena.deinit();
-    }
-
     pub fn collectGarbage(self: *Vm) void {
         _ = self;
     }
 
-    pub fn copyString(self: *Vm, chars: []const u8) []const u8 {
+    pub fn copyString(self: *Vm, chars: []const u8) ![]const u8 {
         const interned = self.strings.getKey(chars);
         if (interned) |i| return i;
 
-        const heap_chars = self.allocator.alloc(u8, chars.len) catch {
-            console.printExit("Could not allocate memory for string.", .{}, 1);
-        };
+        const heap_chars = try self.allocator.alloc(u8, chars.len);
         std.mem.copy(u8, heap_chars, chars);
-        self.strings.put(heap_chars, {}) catch {
-            console.printExit("Could not allocate memory for string.", .{}, 1);
-        };
+        try self.strings.put(heap_chars, {});
         return heap_chars;
     }
 
@@ -73,10 +49,10 @@ pub const Vm = struct {
         vm.init(std.testing.allocator);
         defer vm.deinit();
 
-        const s1 = vm.copyString("first");
-        _ = vm.copyString("second");
-        _ = vm.copyString("third");
-        const s1_2 = vm.copyString("first");
+        const s1 = try vm.copyString("first");
+        _ = try vm.copyString("second");
+        _ = try vm.copyString("third");
+        const s1_2 = try vm.copyString("first");
 
         try std.testing.expect(vm.strings.count() == 3);
         try std.testing.expect(vm.strings.contains("first"));
@@ -86,15 +62,13 @@ pub const Vm = struct {
         try std.testing.expectEqual(s1, s1_2);
     }
 
-    pub fn takeString(self: *Vm, chars: []const u8) []const u8 {
+    pub fn takeString(self: *Vm, chars: []const u8) ![]const u8 {
         const interned = self.strings.getKey(chars);
         if (interned) |i| {
             self.allocator.free(chars);
             return i;
         }
-        self.strings.put(chars, {}) catch {
-            console.printExit("Could not allocate memory for string.", .{}, 1);
-        };
+        try self.strings.put(chars, {});
         return chars;
     }
 
@@ -105,19 +79,19 @@ pub const Vm = struct {
 
         const heap_chars_1 = try vm.allocator.alloc(u8, 5);
         std.mem.copy(u8, heap_chars_1, "first");
-        const s1 = vm.takeString(heap_chars_1);
+        const s1 = try vm.takeString(heap_chars_1);
 
         const heap_chars_2 = try vm.allocator.alloc(u8, 6);
         std.mem.copy(u8, heap_chars_2, "second");
-        _ = vm.takeString(heap_chars_2);
+        _ = try vm.takeString(heap_chars_2);
 
         const heap_chars_3 = try vm.allocator.alloc(u8, 5);
         std.mem.copy(u8, heap_chars_3, "third");
-        _ = vm.takeString(heap_chars_3);
+        _ = try vm.takeString(heap_chars_3);
 
         const heap_chars_1_2 = try vm.allocator.alloc(u8, 5);
         std.mem.copy(u8, heap_chars_1_2, "first");
-        const s1_2 = vm.takeString(heap_chars_1_2);
+        const s1_2 = try vm.takeString(heap_chars_1_2);
 
         try std.testing.expect(vm.strings.count() == 3);
         try std.testing.expect(vm.strings.contains("first"));
@@ -127,34 +101,29 @@ pub const Vm = struct {
         try std.testing.expectEqual(s1, s1_2);
     }
 
-    fn getHst(self: *Vm, source: []const u8, layer: u8) hst.Node {
+    fn getHst(self: *Vm, source: []const u8, layer: u8) !hst.Node {
         return switch (layer) {
             0 => layer_0_parser.parse(self, source),
-            else => console.printExit("Invalid layer {d}", .{layer}, 1),
+            else => {
+                std.debug.print("Invalid layer {d}\n", .{layer});
+                return error.InvalidLayer;
+            },
         };
     }
 
     pub fn format(self: *Vm, writer: anytype, source: []const u8, layer: u8) !void {
-        self.initHst();
+        const root = try getHst(self, source, layer);
+        defer root.deinit(self.allocator);
 
-        const root = getHst(self, source, layer);
         try root.format(writer, layer);
-
-        self.deinitHst();
     }
 
-    pub fn interpret(self: *Vm, source: []const u8, layer: u8) InterpretResult {
-        self.initHst();
+    pub fn interpret(self: *Vm, source: []const u8, layer: u8) !void {
+        const root = try getHst(self, source, layer);
+        defer root.deinit(self.allocator);
 
-        const root = getHst(self, source, layer);
-        root.format(console.stdout, layer) catch {
-            return .compile_error;
-        };
+        try root.format(std.io.getStdErr().writer(), layer);
 
         // todo - hst to ast
-
-        self.deinitHst();
-
-        return .ok;
     }
 };
